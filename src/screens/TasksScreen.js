@@ -1,5 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, Modal, Alert } from 'react-native';
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  FlatList, 
+  TouchableOpacity, 
+  Modal, 
+  Alert, 
+  StyleSheet 
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 const TasksScreen = () => {
@@ -8,7 +17,6 @@ const TasksScreen = () => {
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDescription, setTaskDescription] = useState('');
   const [taskDueDate, setTaskDueDate] = useState('');
-  const [priority, setPriority] = useState('Medium');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Function to add a new task
@@ -22,7 +30,6 @@ const TasksScreen = () => {
       title: taskTitle,
       description: taskDescription,
       dueDate: taskDueDate,
-      priority: priority,
       completed: false,
     };
     setTasks([...tasks, newTask]);
@@ -30,17 +37,16 @@ const TasksScreen = () => {
     setTaskTitle('');
     setTaskDescription('');
     setTaskDueDate('');
-    setPriority('Medium');
   };
 
-  // Function to toggle task completion
+  // Toggle task completion
   const toggleTaskCompletion = (taskId) => {
     setTasks(tasks.map(task => 
       task.id === taskId ? { ...task, completed: !task.completed } : task
     ));
   };
 
-  // Function to delete a task
+  // Delete a task
   const deleteTask = (taskId) => {
     Alert.alert('Confirm Delete', 'Are you sure you want to delete this task?', [
       { text: 'Cancel', style: 'cancel' },
@@ -48,126 +54,181 @@ const TasksScreen = () => {
     ]);
   };
 
-  // Function to filter tasks based on search query
+  // Filter tasks based on search query
   const filteredTasks = tasks.filter(task =>
     task.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const renderItem = ({ item }) => (
+    <View style={[styles.taskCard, item.completed && styles.completedTask]}>
+      <TouchableOpacity onPress={() => toggleTaskCompletion(item.id)} style={styles.taskHeader}>
+        <Text style={styles.taskTitle}>{item.completed ? '✅ ' : ''}{item.title}</Text>
+      </TouchableOpacity>
+      <Text style={styles.taskDescription}>{item.description}</Text>
+      <Text style={styles.taskDueDate}>Due: {item.dueDate}</Text>
+      <View style={styles.taskActions}>
+        <TouchableOpacity onPress={() => deleteTask(item.id)} style={styles.actionButton}>
+          <Ionicons name="trash" size={24} color="#D32F2F" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   return (
-    <View style={{ flex: 1, padding: 20, backgroundColor: '#f5f5f5' }}>
-      
-      {/* 🔍 Search Bar */}
+    <View style={styles.container}>
+      <Text style={styles.title}>Tasks</Text>
       <TextInput
-        style={{
-          backgroundColor: 'white',
-          padding: 10,
-          borderRadius: 10,
-          marginBottom: 10,
-          borderWidth: 1,
-          borderColor: '#ccc',
-        }}
-        placeholder="Search tasks..."
+        placeholder="Search Tasks..."
         value={searchQuery}
         onChangeText={setSearchQuery}
+        style={styles.searchBar}
       />
-
-      {/* 📋 Task List */}
       <FlatList
         data={filteredTasks}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View
-            style={{
-              backgroundColor: item.completed ? '#d3ffd3' : 'white',
-              padding: 15,
-              marginBottom: 10,
-              borderRadius: 10,
-              borderLeftWidth: 5,
-              borderColor: item.priority === 'High' ? 'red' : item.priority === 'Medium' ? 'orange' : 'green',
-              shadowColor: '#000',
-              shadowOpacity: 0.2,
-              shadowRadius: 5,
-              elevation: 3,
-            }}
-          >
-            <TouchableOpacity onPress={() => toggleTaskCompletion(item.id)}>
-              <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#333' }}>
-                {item.completed ? '✅ ' : ''}{item.title}
-              </Text>
-            </TouchableOpacity>
-            <Text style={{ color: '#666', marginBottom: 5 }}>{item.description}</Text>
-            <Text style={{ color: '#888' }}>Due: {item.dueDate}</Text>
-
-            {/* 🗑️ Delete Button */}
-            <TouchableOpacity onPress={() => deleteTask(item.id)} style={{ marginTop: 5 }}>
-              <Ionicons name="trash" size={24} color="red" />
-            </TouchableOpacity>
-          </View>
-        )}
+        renderItem={renderItem}
+        style={styles.taskList}
       />
-
-      {/* ➕ Add Task Button */}
-      <TouchableOpacity
-        onPress={() => setModalVisible(true)}
-        style={{
-          backgroundColor: '#007bff',
-          padding: 15,
-          borderRadius: 30,
-          alignItems: 'center',
-          position: 'absolute',
-          bottom: 20,
-          right: 20,
-          elevation: 5,
-        }}
+      <TouchableOpacity 
+        onPress={() => setModalVisible(true)} 
+        style={styles.addButton}
       >
         <Ionicons name="add" size={30} color="white" />
       </TouchableOpacity>
 
-      {/* 📝 Add Task Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent>
-        <View style={{
-          flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)',
-        }}>
-          <View style={{
-            width: '90%', backgroundColor: 'white', padding: 20, borderRadius: 10,
-          }}>
-            <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 10 }}>Add Task</Text>
-            
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Add Task</Text>
             <TextInput
               placeholder="Title"
               value={taskTitle}
               onChangeText={setTaskTitle}
-              style={{ backgroundColor: '#eee', padding: 10, borderRadius: 5, marginBottom: 10 }}
+              style={styles.input}
             />
-
             <TextInput
               placeholder="Description"
               value={taskDescription}
               onChangeText={setTaskDescription}
-              style={{ backgroundColor: '#eee', padding: 10, borderRadius: 5, marginBottom: 10 }}
+              style={[styles.input, styles.multilineInput]}
+              multiline
+              textAlignVertical="top"
             />
-
             <TextInput
               placeholder="Due Date (YYYY-MM-DD)"
               value={taskDueDate}
               onChangeText={setTaskDueDate}
-              style={{ backgroundColor: '#eee', padding: 10, borderRadius: 5, marginBottom: 10 }}
+              style={styles.input}
             />
-
-            <TouchableOpacity onPress={addTask} style={{ backgroundColor: '#28a745', padding: 10, borderRadius: 5, alignItems: 'center', marginTop: 10 }}>
-              <Text style={{ color: 'white', fontWeight: 'bold' }}>Add Task</Text>
+            <TouchableOpacity onPress={addTask} style={styles.saveButton}>
+              <Text style={styles.saveButtonText}>Add Task</Text>
             </TouchableOpacity>
-
-            <TouchableOpacity onPress={() => setModalVisible(false)} style={{ marginTop: 10, alignItems: 'center' }}>
-              <Text style={{ color: 'red', fontWeight: 'bold' }}>Cancel</Text>
+            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.cancelButton}>
+              <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
-
           </View>
         </View>
       </Modal>
-
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: { 
+    flex: 1, 
+    padding: 20, 
+    backgroundColor: '#E3F2FD' 
+  },
+  title: { 
+    fontSize: 26, 
+    fontWeight: 'bold', 
+    textAlign: 'center', 
+    marginBottom: 15, 
+    color: '#0277BD' 
+  },
+  searchBar: { 
+    backgroundColor: 'white', 
+    padding: 12, 
+    borderWidth: 1, 
+    borderColor: '#B3E5FC', 
+    borderRadius: 10, 
+    marginBottom: 15 
+  },
+  taskList: { marginBottom: 80 },
+  taskCard: { 
+    backgroundColor: 'white', 
+    padding: 15, 
+    borderRadius: 10, 
+    marginBottom: 15, 
+    borderLeftWidth: 5, 
+    borderColor: '#4CAF50',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  completedTask: {
+    backgroundColor: '#d3ffd3',
+  },
+  taskHeader: { flexDirection: 'row', alignItems: 'center' },
+  taskTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },
+  taskDescription: { fontSize: 16, color: '#666', marginVertical: 15 },
+  taskDueDate: { fontSize: 14, color: '#888' },
+  taskActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10 },
+  actionButton: { marginLeft: 15 },
+  addButton: { 
+    position: 'absolute', 
+    bottom: 20, 
+    right: 20, 
+    backgroundColor: '#00796B', 
+    padding: 15, 
+    borderRadius: 50, 
+    elevation: 5 
+  },
+  modalOverlay: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    backgroundColor: 'rgba(0,0,0,0.5)' 
+  },
+  modalContainer: { 
+    backgroundColor: 'white', 
+    padding: 20, 
+    marginHorizontal: 30, 
+    borderRadius: 10, 
+    elevation: 10 
+  },
+  modalTitle: { 
+    fontSize: 20, 
+    fontWeight: 'bold', 
+    textAlign: 'center', 
+    marginBottom: 15 
+  },
+  input: { 
+    borderWidth: 1, 
+    borderColor: '#B3E5FC', 
+    padding: 12, 
+    borderRadius: 10, 
+    marginBottom: 10 
+  },
+  multilineInput: {
+    height: 80, 
+  },
+  saveButton: { 
+    backgroundColor: '#0288D1', 
+    padding: 12, 
+    borderRadius: 10, 
+    alignItems: 'center', 
+    marginTop: 10 
+  },
+  saveButtonText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
+  cancelButton: { 
+    marginTop: 10, 
+    alignItems: 'center' 
+  },
+  cancelButtonText: { 
+    fontSize: 16, 
+    color: '#D32F2F' 
+  },
+});
 
 export default TasksScreen;
