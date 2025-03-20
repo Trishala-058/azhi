@@ -1,22 +1,50 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, FlatList, Image, StyleSheet, Alert, Modal } from 'react-native';
+import { 
+  View, 
+  Text, 
+  TouchableOpacity, 
+  Image, 
+  StyleSheet, 
+  Alert, 
+  Modal, 
+  SafeAreaView 
+} from 'react-native';
+import DraggableGrid from 'react-native-draggable-grid';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 
-const GalleryScreen = ({ navigation }) => {
-  const [images, setImages] = useState([]);
+const GalleryScreen = () => {
+  const [images, setImages] = useState([]); // stores image URIs
   const [selectedImage, setSelectedImage] = useState(null);
 
-  const pickImage = async () => {
+  const pickImages = async () => {
+    // Request permission to access the media library
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permissionResult.granted) {
+      Alert.alert("Permission Denied", "Permission to access media library is required!");
+      return;
+    }
+    
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
+      mediaTypes: ImagePicker.MediaTypeOptions.Images, // using this option as requested
+      allowsMultipleSelection: true,
       quality: 1,
     });
-
-    if (!result.canceled && result.assets.length > 0) {
-      setImages([...images, result.assets[0].uri]);
+    
+    console.log("Image Picker Result:", result);
+    
+    if (!result.canceled) {
+      let newImages = [];
+      // If multiple images are selected, result.assets is an array
+      if (result.assets && result.assets.length > 0) {
+        newImages = result.assets.map(asset => asset.uri);
+      } else if (result.uri) {
+        // Fallback if only a single image is selected
+        newImages = [result.uri];
+      }
+      if (newImages.length > 0) {
+        setImages(prevImages => [...prevImages, ...newImages]);
+      }
     }
   };
 
@@ -27,36 +55,55 @@ const GalleryScreen = ({ navigation }) => {
     ]);
   };
 
-  const renderItem = ({ item }) => (
+  // DraggableGrid requires an array of objects with a unique key.
+  const data = images.map((uri, index) => ({ uri, key: index.toString() }));
+
+  const renderGridItem = (item) => (
     <View style={styles.imageContainer}>
-      <TouchableOpacity onPress={() => setSelectedImage(item)}>
-        <Image source={{ uri: item }} style={styles.image} />
+      <TouchableOpacity 
+        onPress={() => setSelectedImage(item.uri)}
+        style={{ flex: 1 }}
+      >
+        <Image source={{ uri: item.uri }} style={styles.image} />
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => deleteImage(item)} style={styles.deleteButton}>
+      <TouchableOpacity onPress={() => deleteImage(item.uri)} style={styles.deleteButton}>
         <Ionicons name="trash" size={20} color="white" />
       </TouchableOpacity>
     </View>
   );
 
+  const onDragRelease = (newData) => {
+    // Update images state with new order
+    setImages(newData.map(item => item.uri));
+  };
+
+  const deleteAllImages = () => {
+    Alert.alert('Delete All', 'Are you sure you want to delete all photos?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete All', onPress: () => setImages([]) }
+    ]);
+  };
+
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <Text style={styles.pageTitle}>Photo Gallery</Text>
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.button} onPress={pickImage}>
-          <Ionicons name="add-circle" size={24} color="white" />
-          <Text style={styles.buttonText}>Add Photo</Text>
+      
+      {/* Floating buttons at the top-right */}
+      <View style={styles.floatingButtons}>
+        <TouchableOpacity style={styles.floatingButton} onPress={pickImages}>
+          <Ionicons name="add-circle" size={28} color="white" />
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.button, styles.deleteAllButton]} onPress={() => setImages([])}>
-          <Ionicons name="trash" size={24} color="white" />
-          <Text style={styles.buttonText}>Delete All</Text>
+        <TouchableOpacity style={[styles.floatingButton, styles.deleteAllButton]} onPress={deleteAllImages}>
+          <Ionicons name="trash" size={28} color="white" />
         </TouchableOpacity>
       </View>
-      <FlatList
-        data={images}
-        keyExtractor={(item, index) => index.toString()}
-        numColumns={3}
-        renderItem={renderItem}
-        contentContainerStyle={styles.gridContainer}
+      
+      <DraggableGrid
+        data={data}
+        renderItem={renderGridItem}
+        numColumns={2}
+        onDragRelease={onDragRelease}
+        containerStyle={styles.gridContainer}
       />
       
       {/* Full-Screen Image Modal */}
@@ -68,24 +115,83 @@ const GalleryScreen = ({ navigation }) => {
           <Image source={{ uri: selectedImage }} style={styles.fullImage} />
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5', alignItems: 'center', paddingTop: 20 },
-  pageTitle: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, color: '#333' },
-  buttonContainer: { flexDirection: 'row', marginBottom: 20 },
-  button: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#4CAF50', padding: 12, borderRadius: 8, marginHorizontal: 10 },
-  deleteAllButton: { backgroundColor: '#d9534f' },
-  buttonText: { color: 'white', fontSize: 16, marginLeft: 8 },
-  gridContainer: { padding: 10 },
-  imageContainer: { position: 'relative', margin: 5, borderRadius: 10, overflow: 'hidden' },
-  image: { width: 110, height: 110, borderRadius: 10 },
-  deleteButton: { position: 'absolute', top: 5, right: 5, backgroundColor: 'red', borderRadius: 15, padding: 6 },
-  modalContainer: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.9)', justifyContent: 'center', alignItems: 'center' },
-  fullImage: { width: '90%', height: '80%', resizeMode: 'contain' },
-  modalClose: { position: 'absolute', top: 40, right: 20 },
+  container: { 
+    flex: 1, 
+    backgroundColor: '#f5f5f5', 
+    alignItems: 'center',
+    paddingTop: 20,
+  },
+  pageTitle: { 
+    fontSize: 28, 
+    fontWeight: 'bold', 
+    marginTop: 30,
+    marginBottom: 20, 
+    color: '#333' 
+  },
+  floatingButtons: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    flexDirection: 'column',
+    zIndex: 10,
+  },
+  floatingButton: {
+    backgroundColor: '#4CAF50',
+    padding: 8,
+    borderRadius: 30,
+    marginBottom: 10,
+  },
+  deleteAllButton: {
+    backgroundColor: '#d9534f',
+  },
+  gridContainer: { 
+    paddingHorizontal: 10, 
+    paddingBottom: 20,
+  },
+  imageContainer: { 
+    position: 'relative', 
+    margin: 10, 
+    borderRadius: 10, 
+    overflow: 'hidden', 
+    backgroundColor: '#ddd',
+    width: 240, 
+    height: 240,
+  },
+  image: { 
+    width: '100%', 
+    height: '100%', 
+    borderRadius: 10 
+  },
+  deleteButton: { 
+    position: 'absolute', 
+    top: 10, 
+    right: 10, 
+    backgroundColor: 'rgba(220,53,69,0.8)', 
+    borderRadius: 15, 
+    padding: 6 
+  },
+  modalContainer: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0, 0, 0, 0.9)', 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  fullImage: { 
+    width: '90%', 
+    height: '80%', 
+    resizeMode: 'contain',
+    borderRadius: 10,
+  },
+  modalClose: { 
+    position: 'absolute', 
+    top: 40, 
+    right: 20 
+  },
 });
 
 export default GalleryScreen;
