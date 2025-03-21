@@ -27,7 +27,7 @@ const LoginScreen = ({ onLogin }) => {
       Alert.alert('Success', 'Logged in successfully!');
       onLogin(); // Update the auth state in App.js
     } catch (error) {
-      Alert.alert('Login Error', error.message);
+      Alert.alert('Login Error','Check the email and password');
     }
   };
 
@@ -42,7 +42,7 @@ const LoginScreen = ({ onLogin }) => {
       Alert.alert('Success', 'Account created successfully!');
       onLogin();
     } catch (error) {
-      Alert.alert('Sign Up Error', error.message);
+      Alert.alert('Sign Up Error', 'Check the email and password');
     }
   };
 
