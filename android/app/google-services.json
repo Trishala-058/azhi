@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "146548174251",
+    "project_id": "azhi-fdb7e",
+    "storage_bucket": "azhi-fdb7e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:146548174251:android:9820b9921813ba769536ee",
+        "android_client_info": {
+          "package_name": "com.anonymous.azhi"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCoaM2523icv7U2JBG6qOKrUCmjvuWJsi0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

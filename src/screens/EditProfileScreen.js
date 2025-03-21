@@ -1,14 +1,24 @@
 // src/screens/EditProfileScreen.js
 import React, { useState, useContext, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Image, Platform, Modal } from 'react-native';
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  StyleSheet, 
+  Alert, 
+  Image, 
+  Platform, 
+  Modal 
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import firebase from '../config/firebaseConfig';
 import { ProfileContext } from '../context/ProfileContext';
 
 const EditProfileScreen = ({ navigation }) => {
-  const { profile, setProfile } = useContext(ProfileContext);
+  const { profile, setProfile, signOut } = useContext(ProfileContext);
 
-  // State for profile picture, default to current profile photo or a placeholder
   const [photo, setPhoto] = useState(profile.photo || 'https://via.placeholder.com/100');
   const [name, setName] = useState(profile.name);
   const [age, setAge] = useState(profile.age);
@@ -16,11 +26,8 @@ const EditProfileScreen = ({ navigation }) => {
   const [condition, setCondition] = useState(profile.condition);
   const [address, setAddress] = useState(profile.address);
   const [contact, setContact] = useState(profile.contact);
-
-  // State to control modal visibility
   const [modalVisible, setModalVisible] = useState(false);
 
-  // Request permission to access the image library when the component mounts
   useEffect(() => {
     (async () => {
       if (Platform.OS !== 'web') {
@@ -40,8 +47,7 @@ const EditProfileScreen = ({ navigation }) => {
         aspect: [1, 1],
         quality: 1,
       });
-
-      // For the latest expo-image-picker, check result.canceled and result.assets
+  
       if (!result.canceled) {
         setPhoto(result.assets[0].uri);
       }
@@ -50,24 +56,14 @@ const EditProfileScreen = ({ navigation }) => {
     }
   };
 
-  // Show alert with options to view or change the photo
   const openPhotoOptions = () => {
     Alert.alert(
       "Profile Photo",
       "What would you like to do?",
       [
-        {
-          text: "View Photo",
-          onPress: () => setModalVisible(true),
-        },
-        {
-          text: "Change Photo",
-          onPress: pickImage,
-        },
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
+        { text: "View Photo", onPress: () => setModalVisible(true) },
+        { text: "Change Photo", onPress: pickImage },
+        { text: "Cancel", style: "cancel" },
       ],
       { cancelable: true }
     );
@@ -81,7 +77,7 @@ const EditProfileScreen = ({ navigation }) => {
       condition: condition.trim() !== '' ? condition : profile.condition,
       address: address.trim() !== '' ? address : profile.address,
       contact: contact.trim() !== '' ? contact : profile.contact,
-      photo, // save the selected photo
+      photo,
     };
 
     setProfile(updatedProfile);
@@ -89,16 +85,25 @@ const EditProfileScreen = ({ navigation }) => {
     navigation.goBack();
   };
 
+  const handleSignOut = async () => {
+    try {
+      await firebase.auth().signOut();
+      // Call the global signOut from ProfileContext to update auth state
+      signOut();
+    } catch (error) {
+      Alert.alert('Sign Out Error', error.message);
+    }
+  };
+
   return (
     <LinearGradient colors={['#BBDEFB', '#90CAF9']} style={styles.container}>
       <Text style={styles.header}>Edit Profile</Text>
       <View style={styles.form}>
-        {/* Display current profile photo */}
         <TouchableOpacity onPress={openPhotoOptions} style={styles.photoContainer}>
           <Image source={{ uri: photo }} style={styles.photo} />
-          <Text style={styles.changePhotoText}> ProfilePhoto</Text>
+          <Text style={styles.changePhotoText}>Change Photo</Text>
         </TouchableOpacity>
-
+  
         <Text style={styles.label}>Name:</Text>
         <TextInput 
           style={styles.input} 
@@ -107,7 +112,7 @@ const EditProfileScreen = ({ navigation }) => {
           placeholder="Enter name" 
           placeholderTextColor="#777"
         />
-
+  
         <Text style={styles.label}>Age:</Text>
         <TextInput 
           style={styles.input} 
@@ -117,7 +122,7 @@ const EditProfileScreen = ({ navigation }) => {
           keyboardType="numeric"
           placeholderTextColor="#777"
         />
-
+  
         <Text style={styles.label}>Gender:</Text>
         <TextInput 
           style={styles.input} 
@@ -126,7 +131,7 @@ const EditProfileScreen = ({ navigation }) => {
           placeholder="Enter gender" 
           placeholderTextColor="#777"
         />
-
+  
         <Text style={styles.label}>Condition:</Text>
         <TextInput 
           style={styles.input} 
@@ -135,7 +140,7 @@ const EditProfileScreen = ({ navigation }) => {
           placeholder="Enter condition" 
           placeholderTextColor="#777"
         />
-
+  
         <Text style={styles.label}>Address:</Text>
         <TextInput 
           style={styles.input} 
@@ -144,7 +149,7 @@ const EditProfileScreen = ({ navigation }) => {
           placeholder="Enter address" 
           placeholderTextColor="#777"
         />
-
+  
         <Text style={styles.label}>Emergency Contact:</Text>
         <TextInput 
           style={styles.input} 
@@ -153,13 +158,17 @@ const EditProfileScreen = ({ navigation }) => {
           placeholder="Enter emergency contact" 
           placeholderTextColor="#777"
         />
-
+  
         <TouchableOpacity style={styles.button} onPress={handleSave}>
           <Text style={styles.buttonText}>Save Profile</Text>
         </TouchableOpacity>
+  
+        {/* Sign Out Button */}
+        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+          <Text style={styles.signOutButtonText}>Sign Out</Text>
+        </TouchableOpacity>
       </View>
-
-      {/* Modal for viewing the profile photo */}
+  
       <Modal visible={modalVisible} transparent={true} animationType="slide">
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
@@ -175,7 +184,10 @@ const EditProfileScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20 },
+  container: { 
+    flex: 1, 
+    padding: 20 
+  },
   header: {
     fontSize: 32,
     fontWeight: 'bold',
@@ -204,7 +216,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#212121',
   },
-  label: { fontSize: 18, color: '#212121', marginBottom: 5 },
+  label: { 
+    fontSize: 18, 
+    color: '#212121', 
+    marginBottom: 5 
+  },
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
@@ -221,35 +237,51 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 10,
   },
-  buttonText: { fontSize: 18, color: '#fff', fontWeight: '600' },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+  buttonText: { 
+    fontSize: 18, 
+    color: '#fff', 
+    fontWeight: '600' 
   },
-  modalContent: {
-    width: '90%',
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  modalImage: {
-    width: 450,
-    height: 450,
-    borderRadius: 10,
-    marginBottom: 15,
-  },
-  closeButton: {
-    backgroundColor: '#4CAF50',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
+  signOutButton: {
+    backgroundColor: '#D32F2F',
+    paddingVertical: 15,
     borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 20,
   },
-  closeButtonText: {
-    fontSize: 16,
+  signOutButtonText: {
+    fontSize: 18,
     color: '#fff',
+    fontWeight: '600',
+  },
+  modalContainer: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0,0,0,0.5)', 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  modalContent: { 
+    width: '90%', 
+    backgroundColor: '#E3F2FD', 
+    padding: 25, 
+    borderRadius: 15, 
+    alignItems: 'center' 
+  },
+  modalImage: { 
+    width: 450, 
+    height: 450, 
+    borderRadius: 10, 
+    marginBottom: 15, 
+  },
+  closeButton: { 
+    backgroundColor: '#4CAF50', 
+    paddingVertical: 10, 
+    paddingHorizontal: 20, 
+    borderRadius: 8, 
+  },
+  closeButtonText: { 
+    fontSize: 16, 
+    color: 'white' 
   },
 });
 

@@ -1,11 +1,14 @@
 // App.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import SplashScreenComponent from './src/screens/SplashScreen';
+import LoginScreen from './src/screens/LoginScreen';
 import TabNavigator from './src/navigation/TabNavigator';
-import { ProfileProvider } from './src/context/ProfileContext';
+import { ProfileProvider, ProfileContext } from './src/context/ProfileContext';
 
-export default function App() {
+const AppContent = () => {
+  // useContext here works because AppContent is wrapped in ProfileProvider
+  const { isAuthenticated, setIsAuthenticated } = useContext(ProfileContext);
   const [isSplashVisible, setIsSplashVisible] = useState(true);
 
   useEffect(() => {
@@ -16,10 +19,23 @@ export default function App() {
   }, []);
 
   return (
+    <NavigationContainer>
+      {isSplashVisible ? (
+        <SplashScreenComponent />
+      ) : !isAuthenticated ? (
+        // LoginScreen should update authentication state
+        <LoginScreen onLogin={() => setIsAuthenticated(true)} />
+      ) : (
+        <TabNavigator />
+      )}
+    </NavigationContainer>
+  );
+};
+
+export default function App() {
+  return (
     <ProfileProvider>
-      <NavigationContainer>
-        {isSplashVisible ? <SplashScreenComponent /> : <TabNavigator />}
-      </NavigationContainer>
+      <AppContent />
     </ProfileProvider>
   );
 }

@@ -155,8 +155,8 @@ const HomeScreen = ({ navigation }) => {
         {/* Caregiver Information */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Caregiver Info 👨⚕️</Text>
-          <Text style={styles.infoText}>Name: Jane Smith</Text>
-          <Text style={styles.infoText}>Contact: (123) 456-7890</Text>
+          <Text style={styles.infoText}>Name: Kalaivani</Text>
+          <Text style={styles.infoText}>Contact: 9385702004</Text>
         </View>
 
         {/* Memory Lane Section */}
