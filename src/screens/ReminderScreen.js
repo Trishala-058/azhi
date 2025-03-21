@@ -535,8 +535,23 @@ const styles = StyleSheet.create({
   modeButtonSelected: { backgroundColor: '#2F80ED' },
   modeButtonText: { fontSize: 16, color: '#2F80ED', fontWeight: '600' },
   modeButtonTextSelected: { color: '#fff' },
-  timeButton: { width: '100%', paddingVertical: 16, backgroundColor: '#f0f0f0', borderRadius: 15, alignItems: 'center', marginBottom: 20 },
-  timeButtonText: { fontSize: 16, color: '#333', fontWeight: '600' },
+  timeButton: { 
+    width: '100%', 
+    paddingVertical: 25,  // Increased vertical padding
+    paddingHorizontal: 20, // Increased horizontal padding
+    backgroundColor: '#f0f0f0', 
+    borderRadius: 15, 
+    alignItems: 'center', 
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#ccc',
+  },
+  timeButtonText: { 
+    fontSize: 20, // Increased font size
+    color: '#333', 
+    fontWeight: '600' 
+  },
+  
   modalFooter: { flexDirection: 'row', justifyContent: 'space-around', backgroundColor: '#f9f9f9', paddingVertical: 20 },
   modalButton: { backgroundColor: '#2F80ED', paddingVertical: 14, paddingHorizontal: 30, borderRadius: 15, flex: 1, marginHorizontal: 10 },
   modalButtonText: { fontSize: 18, color: '#fff', textAlign: 'center', fontWeight: '600' },

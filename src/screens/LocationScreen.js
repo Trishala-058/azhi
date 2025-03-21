@@ -22,8 +22,8 @@ const STORAGE_KEY = "@saved_locations";
 const LocationScreen = () => {
   const [region, setRegion] = useState(null);
   const [safeZone, setSafeZone] = useState({
-    latitude: 37.7749,
-    longitude: -122.4194,
+    latitude: 13.0111,
+    longitude: 80.2363,
     radius: 500,
   });
   const [savedLocations, setSavedLocations] = useState([]);
@@ -64,6 +64,7 @@ const LocationScreen = () => {
 
   const requestLocationPermission = async () => {
     let { status } = await Location.requestForegroundPermissionsAsync();
+    console.log("Location permission status:", status);
     if (status !== "granted") {
       Alert.alert("Permission Denied", "Location access is required.");
       setLoading(false);
