@@ -19,6 +19,7 @@ if (!firebase.apps.length) {
   
   // Access Firestore
   const firestore = firebase.firestore();
+  //firestore.settings({});
   
   // Example collections for your app’s data
   export const tasksCollection = firestore.collection('Tasks');
@@ -30,5 +31,6 @@ if (!firebase.apps.length) {
   
   // If you plan to store actual images in Firebase Storage:
   export const storage = firebase.storage();
+
   
   export default firebase;

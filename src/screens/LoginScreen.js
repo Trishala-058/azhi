@@ -1,22 +1,15 @@
 // src/screens/LoginScreen.js
-import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
-  Alert, 
-  SafeAreaView 
-} from 'react-native';
+import React, { useState, useContext } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import firebase from '../config/firebaseConfig'; // Ensure this file uses firebase/compat/app, etc.
+import firebase from '../config/firebaseConfig';
+import { ProfileContext } from '../context/ProfileContext';
 
-const LoginScreen = ({ onLogin }) => {
+const LoginScreen = ({ navigation }) => {
+  const { setIsAuthenticated } = useContext(ProfileContext);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // Handle user login using Firebase Auth
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
       Alert.alert('Error', 'Both email and password are required.');
@@ -25,24 +18,9 @@ const LoginScreen = ({ onLogin }) => {
     try {
       await firebase.auth().signInWithEmailAndPassword(email, password);
       Alert.alert('Success', 'Logged in successfully!');
-      onLogin(); // Update the auth state in App.js
+      setIsAuthenticated(true);
     } catch (error) {
       Alert.alert('Login Error','Check the email and password');
-    }
-  };
-
-  // Handle user sign up using Firebase Auth
-  const handleSignUp = async () => {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert('Error', 'Both email and password are required.');
-      return;
-    }
-    try {
-      await firebase.auth().createUserWithEmailAndPassword(email, password);
-      Alert.alert('Success', 'Account created successfully!');
-      onLogin();
-    } catch (error) {
-      Alert.alert('Sign Up Error', 'Check the email and password');
     }
   };
 
@@ -76,8 +54,8 @@ const LoginScreen = ({ onLogin }) => {
       <TouchableOpacity onPress={handleLogin} style={styles.button}>
         <Text style={styles.buttonText}>Login</Text>
       </TouchableOpacity>
-      <TouchableOpacity onPress={handleSignUp} style={[styles.button, styles.signUpButton]}>
-        <Text style={styles.buttonText}>Sign Up</Text>
+      <TouchableOpacity onPress={() => navigation.navigate('Signup')} style={{ marginTop: 20 }}>
+        <Text style={{ color: '#0277BD', fontSize: 16, textAlign: 'center' }}>New user? Sign Up</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );
@@ -127,9 +105,6 @@ const styles = StyleSheet.create({
     borderRadius: 10, 
     alignItems: 'center', 
     marginBottom: 15 
-  },
-  signUpButton: { 
-    backgroundColor: '#0288D1' 
   },
   buttonText: { 
     color: 'white', 

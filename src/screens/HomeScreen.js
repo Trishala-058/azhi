@@ -22,7 +22,6 @@ const favoriteImages = [
   require('../../assets/memory/image4.jpg'),
 ];
 
-
 const getRandomImage = () =>
   favoriteImages[Math.floor(Math.random() * favoriteImages.length)];
 
@@ -62,8 +61,15 @@ const HomeScreen = ({ navigation }) => {
       return shuffled;
     });
   };
-  
 
+  if (!profile) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Loading Profile...</Text>
+      </View>
+    );
+  }
+  
   return (
     <LinearGradient colors={['#BBDEFB', '#90CAF9']} style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
@@ -155,8 +161,12 @@ const HomeScreen = ({ navigation }) => {
         {/* Caregiver Information */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Caregiver Info 👨⚕️</Text>
-          <Text style={styles.infoText}>Name: Kalaivani</Text>
-          <Text style={styles.infoText}>Contact: 9385702004</Text>
+          <Text style={styles.infoText}>
+            Name: {profile.caregiverName ? profile.caregiverName : 'Not Provided'}
+          </Text>
+          <Text style={styles.infoText}>
+            Contact: {profile.caregiverNumber ? profile.caregiverNumber : 'Not Provided'}
+          </Text>
         </View>
 
         {/* Memory Lane Section */}
@@ -181,7 +191,6 @@ const HomeScreen = ({ navigation }) => {
               <Text style={styles.buttonText}>Shuffle Memory</Text>
             </LinearGradient>
           </TouchableOpacity>
-
         </View>
 
         {/* Weather & Recommendation */}
@@ -200,7 +209,7 @@ const HomeScreen = ({ navigation }) => {
         {/* Modal for Viewing Memory Image */}
         <Modal visible={modalVisible} transparent animationType="fade">
           <View style={styles.modalContainer}>
-          <Image source={selectedMemoryImage} style={styles.modalImage} />
+            <Image source={selectedMemoryImage} style={styles.modalImage} />
             <TouchableOpacity
               style={styles.modalCloseButton}
               onPress={() => setModalVisible(false)}

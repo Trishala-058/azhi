@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -10,48 +10,114 @@ import {
   StyleSheet 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePickerModal from "react-native-modal-datetime-picker";
+import firebase from '../config/firebaseConfig';
+import { addDoc, onSnapshot, deleteDoc, doc, updateDoc, collection } from 'firebase/firestore';
 
 const TasksScreen = () => {
-  const [tasks, setTasks] = useState([]);
-  const [modalVisible, setModalVisible] = useState(false);
+  // Local state for inputs and tasks
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDescription, setTaskDescription] = useState('');
-  const [taskDueDate, setTaskDueDate] = useState('');
+  // Due date stored as a Date object
+  const [taskDueDate, setTaskDueDate] = useState(new Date());
+  const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [modalVisible, setModalVisible] = useState(false);
+  const [tasks, setTasks] = useState([]);
+
+  // Get current user's UID (ensure the user is logged in)
+  const currentUser = firebase.auth().currentUser;
+  const userId = currentUser ? currentUser.uid : null;
+
+  // Create a reference to the user's Tasks subcollection
+  const userTasksCollection = userId
+    ? collection(firebase.firestore(), "Users", userId, "Tasks")
+    : null;
+
+  // Subscribe to real-time updates from the user's tasks collection
+  useEffect(() => {
+    if (!userTasksCollection) return;
+    const unsubscribe = onSnapshot(userTasksCollection, (snapshot) => {
+      const tasksData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setTasks(tasksData);
+    }, (error) => {
+      console.error("Error fetching tasks: ", error);
+    });
+    return () => unsubscribe();
+  }, [userTasksCollection]);
 
   // Function to add a new task
-  const addTask = () => {
+  const addTask = async () => {
     if (!taskTitle.trim()) {
       Alert.alert('Error', 'Task title is required.');
       return;
     }
+    if (!userTasksCollection) {
+      Alert.alert('Error', 'User not authenticated.');
+      return;
+    }
     const newTask = {
-      id: Date.now().toString(),
       title: taskTitle,
       description: taskDescription,
-      dueDate: taskDueDate,
+      // Format due date as YYYY-MM-DD
+      dueDate: taskDueDate.toISOString().split('T')[0],
       completed: false,
+      createdAt: new Date().toISOString(),
     };
-    setTasks([...tasks, newTask]);
-    setModalVisible(false);
-    setTaskTitle('');
-    setTaskDescription('');
-    setTaskDueDate('');
+
+    try {
+      await addDoc(userTasksCollection, newTask);
+      setTaskTitle('');
+      setTaskDescription('');
+      setTaskDueDate(new Date());
+      setModalVisible(false);
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    }
   };
 
   // Toggle task completion
-  const toggleTaskCompletion = (taskId) => {
-    setTasks(tasks.map(task => 
-      task.id === taskId ? { ...task, completed: !task.completed } : task
-    ));
+  const toggleTaskCompletion = async (taskId, currentStatus) => {
+    if (!userTasksCollection) return;
+    try {
+      const taskRef = doc(firebase.firestore(), "Users", userId, "Tasks", taskId);
+      await updateDoc(taskRef, { completed: !currentStatus });
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    }
   };
 
-  // Delete a task
-  const deleteTask = (taskId) => {
+  // Delete a task with confirmation
+  const deleteTask = async (taskId) => {
+    if (!userTasksCollection) return;
     Alert.alert('Confirm Delete', 'Are you sure you want to delete this task?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', onPress: () => setTasks(tasks.filter(task => task.id !== taskId)) },
+      { 
+        text: 'Delete', 
+        onPress: async () => {
+          try {
+            const taskRef = doc(firebase.firestore(), "Users", userId, "Tasks", taskId);
+            await deleteDoc(taskRef);
+          } catch (error) {
+            Alert.alert('Error', error.message);
+          }
+        }
+      },
     ]);
+  };
+
+  // Show/Hide the modal date picker
+  const showDatePicker = () => {
+    setDatePickerVisibility(true);
+  };
+  const hideDatePicker = () => {
+    setDatePickerVisibility(false);
+  };
+
+  // When a date is picked
+  const handleConfirm = (selectedDate) => {
+    setTaskDueDate(selectedDate);
+    hideDatePicker();
   };
 
   // Filter tasks based on search query
@@ -59,9 +125,10 @@ const TasksScreen = () => {
     task.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Render each task item
   const renderItem = ({ item }) => (
     <View style={[styles.taskCard, item.completed && styles.completedTask]}>
-      <TouchableOpacity onPress={() => toggleTaskCompletion(item.id)} style={styles.taskHeader}>
+      <TouchableOpacity onPress={() => toggleTaskCompletion(item.id, item.completed)} style={styles.taskHeader}>
         <Text style={styles.taskTitle}>{item.completed ? '✅ ' : ''}{item.title}</Text>
       </TouchableOpacity>
       <Text style={styles.taskDescription}>{item.description}</Text>
@@ -76,7 +143,7 @@ const TasksScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Tasks</Text>
+      <Text style={styles.header}>Tasks</Text>
       <TextInput
         placeholder="Search Tasks..."
         value={searchQuery}
@@ -89,10 +156,7 @@ const TasksScreen = () => {
         renderItem={renderItem}
         style={styles.taskList}
       />
-      <TouchableOpacity 
-        onPress={() => setModalVisible(true)} 
-        style={styles.addButton}
-      >
+      <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.addButton}>
         <Ionicons name="add" size={30} color="white" />
       </TouchableOpacity>
 
@@ -114,11 +178,16 @@ const TasksScreen = () => {
               multiline
               textAlignVertical="top"
             />
-            <TextInput
-              placeholder="Due Date (YYYY-MM-DD)"
-              value={taskDueDate}
-              onChangeText={setTaskDueDate}
-              style={styles.input}
+            <TouchableOpacity onPress={showDatePicker} style={styles.dateButton}>
+              <Text style={styles.dateButtonText}>
+                Due Date: {taskDueDate.toISOString().split('T')[0]}
+              </Text>
+            </TouchableOpacity>
+            <DateTimePickerModal
+              isVisible={isDatePickerVisible}
+              mode="date"
+              onConfirm={handleConfirm}
+              onCancel={hideDatePicker}
             />
             <TouchableOpacity onPress={addTask} style={styles.saveButton}>
               <Text style={styles.saveButtonText}>Add Task</Text>
@@ -139,43 +208,64 @@ const styles = StyleSheet.create({
     padding: 20, 
     backgroundColor: '#E3F2FD' 
   },
-  title: { 
-    fontSize: 26, 
+  header: { 
+    fontSize: 24, 
     fontWeight: 'bold', 
-    textAlign: 'center', 
-    marginBottom: 15, 
-    color: '#0277BD' 
+    marginBottom: 20, 
+    textAlign: 'center' 
   },
   searchBar: { 
     backgroundColor: 'white', 
     padding: 12, 
     borderWidth: 1, 
-    borderColor: '#B3E5FC', 
+    borderColor: '#ccc', 
     borderRadius: 10, 
-    marginBottom: 15 
+    marginBottom: 10 
   },
-  taskList: { marginBottom: 80 },
+  taskList: { 
+    marginBottom: 80 
+  },
   taskCard: { 
     backgroundColor: 'white', 
     padding: 15, 
     borderRadius: 10, 
-    marginBottom: 15, 
+    marginBottom: 10, 
     borderLeftWidth: 5, 
-    borderColor: '#4CAF50',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 3,
+    borderColor: '#4CAF50', 
+    shadowColor: '#000', 
+    shadowOpacity: 0.1, 
+    shadowRadius: 5, 
+    elevation: 3 
   },
   completedTask: {
     backgroundColor: '#d3ffd3',
   },
-  taskHeader: { flexDirection: 'row', alignItems: 'center' },
-  taskTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },
-  taskDescription: { fontSize: 16, color: '#666', marginVertical: 15 },
-  taskDueDate: { fontSize: 14, color: '#888' },
-  taskActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10 },
-  actionButton: { marginLeft: 15 },
+  taskHeader: { 
+    flexDirection: 'row', 
+    alignItems: 'center' 
+  },
+  taskTitle: { 
+    fontSize: 18, 
+    fontWeight: 'bold', 
+    color: '#333' 
+  },
+  taskDescription: { 
+    fontSize: 16, 
+    color: '#666', 
+    marginVertical: 15 
+  },
+  taskDueDate: { 
+    fontSize: 14, 
+    color: '#888' 
+  },
+  taskActions: { 
+    flexDirection: 'row', 
+    justifyContent: 'flex-end', 
+    marginTop: 10 
+  },
+  actionButton: { 
+    marginLeft: 15 
+  },
   addButton: { 
     position: 'absolute', 
     bottom: 20, 
@@ -205,13 +295,28 @@ const styles = StyleSheet.create({
   },
   input: { 
     borderWidth: 1, 
-    borderColor: '#B3E5FC', 
+    borderColor: '#ccc', 
     padding: 12, 
     borderRadius: 10, 
     marginBottom: 10 
   },
-  multilineInput: {
-    height: 80, 
+  multilineInput: { 
+    height: 80 
+  },
+  dateButton: {
+    backgroundColor: '#f0f0f0',
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+    borderRadius: 15,
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#ccc',
+  },
+  dateButtonText: {
+    fontSize: 20,
+    color: '#333',
+    fontWeight: '600'
   },
   saveButton: { 
     backgroundColor: '#0288D1', 
@@ -220,7 +325,11 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     marginTop: 10 
   },
-  saveButtonText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
+  saveButtonText: { 
+    color: 'white', 
+    fontSize: 16, 
+    fontWeight: 'bold' 
+  },
   cancelButton: { 
     marginTop: 10, 
     alignItems: 'center' 

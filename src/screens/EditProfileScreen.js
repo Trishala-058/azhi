@@ -9,7 +9,8 @@ import {
   Alert, 
   Image, 
   Platform, 
-  Modal 
+  Modal,
+  ScrollView
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
@@ -17,7 +18,8 @@ import firebase from '../config/firebaseConfig';
 import { ProfileContext } from '../context/ProfileContext';
 
 const EditProfileScreen = ({ navigation }) => {
-  const { profile, setProfile, signOut } = useContext(ProfileContext);
+  // Destructure user and saveUserProfile along with other values
+  const { profile, setProfile, signOut, saveUserProfile, user } = useContext(ProfileContext);
 
   const [photo, setPhoto] = useState(profile.photo || 'https://via.placeholder.com/100');
   const [name, setName] = useState(profile.name);
@@ -26,6 +28,10 @@ const EditProfileScreen = ({ navigation }) => {
   const [condition, setCondition] = useState(profile.condition);
   const [address, setAddress] = useState(profile.address);
   const [contact, setContact] = useState(profile.contact);
+  // New caregiver fields
+  const [caregiverName, setCaregiverName] = useState(profile.caregiverName || '');
+  const [caregiverNumber, setCaregiverNumber] = useState(profile.caregiverNumber || '');
+
   const [modalVisible, setModalVisible] = useState(false);
 
   useEffect(() => {
@@ -69,7 +75,7 @@ const EditProfileScreen = ({ navigation }) => {
     );
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const updatedProfile = {
       name: name.trim() !== '' ? name : profile.name,
       age: age.trim() !== '' ? age : profile.age,
@@ -78,9 +84,16 @@ const EditProfileScreen = ({ navigation }) => {
       address: address.trim() !== '' ? address : profile.address,
       contact: contact.trim() !== '' ? contact : profile.contact,
       photo,
+      caregiverName: caregiverName.trim() !== '' ? caregiverName : profile.caregiverName,
+      caregiverNumber: caregiverNumber.trim() !== '' ? caregiverNumber : profile.caregiverNumber,
     };
 
+    // Update local context
     setProfile(updatedProfile);
+    // Save the updated profile to Firestore
+    if (user && user.uid) {
+      await saveUserProfile(user.uid, updatedProfile);
+    }
     Alert.alert('Profile Updated', 'Your details have been updated successfully.');
     navigation.goBack();
   };
@@ -88,7 +101,6 @@ const EditProfileScreen = ({ navigation }) => {
   const handleSignOut = async () => {
     try {
       await firebase.auth().signOut();
-      // Call the global signOut from ProfileContext to update auth state
       signOut();
     } catch (error) {
       Alert.alert('Sign Out Error', error.message);
@@ -97,88 +109,109 @@ const EditProfileScreen = ({ navigation }) => {
 
   return (
     <LinearGradient colors={['#BBDEFB', '#90CAF9']} style={styles.container}>
-      <Text style={styles.header}>Edit Profile</Text>
-      <View style={styles.form}>
-        <TouchableOpacity onPress={openPhotoOptions} style={styles.photoContainer}>
-          <Image source={{ uri: photo }} style={styles.photo} />
-          <Text style={styles.changePhotoText}>Change Photo</Text>
-        </TouchableOpacity>
-  
-        <Text style={styles.label}>Name:</Text>
-        <TextInput 
-          style={styles.input} 
-          value={name} 
-          onChangeText={setName} 
-          placeholder="Enter name" 
-          placeholderTextColor="#777"
-        />
-  
-        <Text style={styles.label}>Age:</Text>
-        <TextInput 
-          style={styles.input} 
-          value={age} 
-          onChangeText={setAge} 
-          placeholder="Enter age" 
-          keyboardType="numeric"
-          placeholderTextColor="#777"
-        />
-  
-        <Text style={styles.label}>Gender:</Text>
-        <TextInput 
-          style={styles.input} 
-          value={gender} 
-          onChangeText={setGender} 
-          placeholder="Enter gender" 
-          placeholderTextColor="#777"
-        />
-  
-        <Text style={styles.label}>Condition:</Text>
-        <TextInput 
-          style={styles.input} 
-          value={condition} 
-          onChangeText={setCondition} 
-          placeholder="Enter condition" 
-          placeholderTextColor="#777"
-        />
-  
-        <Text style={styles.label}>Address:</Text>
-        <TextInput 
-          style={styles.input} 
-          value={address} 
-          onChangeText={setAddress} 
-          placeholder="Enter address" 
-          placeholderTextColor="#777"
-        />
-  
-        <Text style={styles.label}>Emergency Contact:</Text>
-        <TextInput 
-          style={styles.input} 
-          value={contact} 
-          onChangeText={setContact} 
-          placeholder="Enter emergency contact" 
-          placeholderTextColor="#777"
-        />
-  
-        <TouchableOpacity style={styles.button} onPress={handleSave}>
-          <Text style={styles.buttonText}>Save Profile</Text>
-        </TouchableOpacity>
-  
-        {/* Sign Out Button */}
-        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-          <Text style={styles.signOutButtonText}>Sign Out</Text>
-        </TouchableOpacity>
-      </View>
-  
-      <Modal visible={modalVisible} transparent={true} animationType="slide">
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Image source={{ uri: photo }} style={styles.modalImage} />
-            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
-          </View>
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <Text style={styles.header}>Edit Profile</Text>
+        <View style={styles.form}>
+          <TouchableOpacity onPress={openPhotoOptions} style={styles.photoContainer}>
+            <Image source={{ uri: photo }} style={styles.photo} />
+            <Text style={styles.changePhotoText}>Change Photo</Text>
+          </TouchableOpacity>
+    
+          <Text style={styles.label}>Name:</Text>
+          <TextInput 
+            style={styles.input} 
+            value={name} 
+            onChangeText={setName} 
+            placeholder="Enter name" 
+            placeholderTextColor="#777"
+          />
+    
+          <Text style={styles.label}>Age:</Text>
+          <TextInput 
+            style={styles.input} 
+            value={age} 
+            onChangeText={setAge} 
+            placeholder="Enter age" 
+            keyboardType="numeric"
+            placeholderTextColor="#777"
+          />
+    
+          <Text style={styles.label}>Gender:</Text>
+          <TextInput 
+            style={styles.input} 
+            value={gender} 
+            onChangeText={setGender} 
+            placeholder="Enter gender" 
+            placeholderTextColor="#777"
+          />
+    
+          <Text style={styles.label}>Condition:</Text>
+          <TextInput 
+            style={styles.input} 
+            value={condition} 
+            onChangeText={setCondition} 
+            placeholder="Enter condition" 
+            placeholderTextColor="#777"
+          />
+    
+          <Text style={styles.label}>Address:</Text>
+          <TextInput 
+            style={styles.input} 
+            value={address} 
+            onChangeText={setAddress} 
+            placeholder="Enter address" 
+            placeholderTextColor="#777"
+          />
+    
+          <Text style={styles.label}>Emergency Contact:</Text>
+          <TextInput 
+            style={styles.input} 
+            value={contact} 
+            onChangeText={setContact} 
+            placeholder="Enter emergency contact" 
+            placeholderTextColor="#777"
+          />
+
+          {/* Caregiver Info */}
+          <Text style={styles.label}>Caregiver Name:</Text>
+          <TextInput 
+            style={styles.input} 
+            value={caregiverName} 
+            onChangeText={setCaregiverName} 
+            placeholder="Enter caregiver name" 
+            placeholderTextColor="#777"
+          />
+    
+          <Text style={styles.label}>Caregiver Phone Number:</Text>
+          <TextInput 
+            style={styles.input} 
+            value={caregiverNumber} 
+            onChangeText={setCaregiverNumber} 
+            placeholder="Enter caregiver phone number" 
+            keyboardType="phone-pad"
+            placeholderTextColor="#777"
+          />
+    
+          <TouchableOpacity style={styles.button} onPress={handleSave}>
+            <Text style={styles.buttonText}>Save Profile</Text>
+          </TouchableOpacity>
+    
+          <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+            <Text style={styles.signOutButtonText}>Sign Out</Text>
+          </TouchableOpacity>
         </View>
-      </Modal>
+    
+        <Modal visible={modalVisible} transparent={true} animationType="slide">
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Image source={{ uri: photo }} style={styles.modalImage} />
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
+                <Text style={styles.closeButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      </ScrollView>
     </LinearGradient>
   );
 };
@@ -186,7 +219,9 @@ const EditProfileScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    padding: 20 
+  },
+  scrollContainer: {
+    padding: 20,
   },
   header: {
     fontSize: 32,

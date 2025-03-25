@@ -1,14 +1,24 @@
 // App.js
 import React, { useState, useEffect, useContext } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
 import SplashScreenComponent from './src/screens/SplashScreen';
 import LoginScreen from './src/screens/LoginScreen';
+import SignupScreen from './src/screens/SignupScreen';
 import TabNavigator from './src/navigation/TabNavigator';
 import { ProfileProvider, ProfileContext } from './src/context/ProfileContext';
 
+const Stack = createStackNavigator();
+
+const AuthStack = () => (
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="Login" component={LoginScreen} />
+    <Stack.Screen name="Signup" component={SignupScreen} />
+  </Stack.Navigator>
+);
+
 const AppContent = () => {
-  // useContext here works because AppContent is wrapped in ProfileProvider
-  const { isAuthenticated, setIsAuthenticated } = useContext(ProfileContext);
+  const { isAuthenticated } = useContext(ProfileContext);
   const [isSplashVisible, setIsSplashVisible] = useState(true);
 
   useEffect(() => {
@@ -22,11 +32,10 @@ const AppContent = () => {
     <NavigationContainer>
       {isSplashVisible ? (
         <SplashScreenComponent />
-      ) : !isAuthenticated ? (
-        // LoginScreen should update authentication state
-        <LoginScreen onLogin={() => setIsAuthenticated(true)} />
-      ) : (
+      ) : isAuthenticated ? (
         <TabNavigator />
+      ) : (
+        <AuthStack />
       )}
     </NavigationContainer>
   );
