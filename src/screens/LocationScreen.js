@@ -24,7 +24,7 @@ const LocationScreen = () => {
   const [safeZone, setSafeZone] = useState({
     latitude: 13.0111,
     longitude: 80.2363,
-    radius: 500,
+    radius: 50,
   });
   const [savedLocations, setSavedLocations] = useState([]);
   const [locationLog, setLocationLog] = useState([]);
