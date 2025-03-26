@@ -9,8 +9,10 @@ const HomeStack = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="HomeScreen" component={HomeScreen} />
-      <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+      <Stack.Screen name="EditProfile" component={EditProfileScreen}
+      options={{ headerShown: true, title: "Edit Profile", gestureEnabled: true }} />
     </Stack.Navigator>
+    
   );
 };
 

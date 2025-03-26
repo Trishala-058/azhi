@@ -11,10 +11,10 @@ const TabNavigator = () => {
     <Tab.Navigator
   screenOptions={({ route }) => ({
     tabBarIcon: ({ color, size }) => {
-      let iconName = route.name === 'Home' ? 'home' : 'grid';
+      let iconName = route.name === 'Home' ? 'home' : 'stats-chart-outline';
       return <Ionicons name={iconName} size={size + 5} color={color} />;
     },
-    tabBarStyle: { backgroundColor: '#004aad', paddingBottom: 5, height: 60 },
+    tabBarStyle: { backgroundColor: '#004aad', paddingBottom: 10, height: 65 },
     tabBarActiveTintColor: '#fff',
     tabBarInactiveTintColor: '#ccc',
     headerShown: false,
