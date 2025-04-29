@@ -4,8 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 
 const EmergencyContacts = () => {
   const [contacts, setContacts] = useState([
-    { id: '1', name: 'John Doe', number: '123-456-7890', relationship: 'Brother', important: false },
-    { id: '2', name: 'Jane Smith', number: '987-654-3210', relationship: 'Doctor', important: true },
+    { id: '1', name: 'Dhanraj', number: '9095289306', relationship: 'Appa', important: false },
+    { id: '2', name: 'Dhamu', number: '9385702003', relationship: 'Thambi', important: true },
   ]);
   const [search, setSearch] = useState('');
   const [modalVisible, setModalVisible] = useState(false);

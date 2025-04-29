@@ -16,10 +16,17 @@ import * as Location from "expo-location";
 import * as SMS from "expo-sms";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import LottieView from "lottie-react-native";
 
 const STORAGE_KEY = "@saved_locations";
 
+const loadingAnimation = require("../../assets/anim/locationloading.json");
+
+
 const LocationScreen = () => {
+  // State for Lottie animation
+  const [showAnimation, setShowAnimation] = useState(true);
+  // Location and other states
   const [region, setRegion] = useState(null);
   const [safeZone, setSafeZone] = useState({
     latitude: 13.0111,
@@ -30,26 +37,33 @@ const LocationScreen = () => {
   const [locationLog, setLocationLog] = useState([]);
   const [currentAddress, setCurrentAddress] = useState("Fetching address...");
   const [loading, setLoading] = useState(true);
-  // New state: track last time the geofence alert was shown
   const [lastGeoFenceAlertTime, setLastGeoFenceAlertTime] = useState(0);
-
-  // Full screen modal state for updating safe zone details and emergency contacts
+  // Full-screen modal states for safe zone details
   const [addSafeZoneModalVisible, setAddSafeZoneModalVisible] = useState(false);
   const [homeAddressInput, setHomeAddressInput] = useState("");
   const [hospitalAddressInput, setHospitalAddressInput] = useState("");
-  // Emergency contacts: comma separated list
   const [emergencyNumberInput, setEmergencyNumberInput] = useState("");
-  // Saved values from the safe zone modal
   const [manualHomeAddress, setManualHomeAddress] = useState("");
   const [manualHospitalAddress, setManualHospitalAddress] = useState("");
   const [manualEmergencyNumber, setManualEmergencyNumber] = useState("");
 
   const mapRef = useRef(null);
 
+  // Show Lottie animation for 3 seconds then load the location tracking UI
   useEffect(() => {
-    requestLocationPermission();
-    loadSavedLocations();
+    const timer = setTimeout(() => {
+      setShowAnimation(false);
+    }, 3000);
+    return () => clearTimeout(timer);
   }, []);
+
+  // Start location tracking and load saved data after the animation is done
+  useEffect(() => {
+    if (!showAnimation) {
+      requestLocationPermission();
+      loadSavedLocations();
+    }
+  }, [showAnimation]);
 
   const loadSavedLocations = async () => {
     try {
@@ -125,7 +139,7 @@ const LocationScreen = () => {
     ]);
   };
 
-  // Saves current location for a marker type
+  // Save current location with a specific marker type
   const saveLocation = async (type) => {
     if (!region) return;
     const newLocation = {
@@ -161,7 +175,6 @@ const LocationScreen = () => {
     }
   };
 
-  // Send location using SMS to multiple contacts (comma separated)
   const sendLocationToEmergencyContacts = async () => {
     const isAvailable = await SMS.isAvailableAsync();
     if (isAvailable) {
@@ -197,7 +210,6 @@ const LocationScreen = () => {
     );
   };
 
-  // Open the full-screen modal, pre-fill saved values
   const openAddSafeZonePage = () => {
     setHomeAddressInput(manualHomeAddress);
     setHospitalAddressInput(manualHospitalAddress);
@@ -221,7 +233,7 @@ const LocationScreen = () => {
     Alert.alert("Details Updated", "Your safe zone details have been updated.");
   };
 
-  if (loading) {
+  if (loading && !showAnimation) {
     return (
       <View style={styles.loader}>
         <ActivityIndicator size="large" color="#007AFF" />
@@ -230,9 +242,25 @@ const LocationScreen = () => {
     );
   }
 
+  // Render Lottie animation while showAnimation is true
+  if (showAnimation) {
+    return (
+      <View style={[styles.loader, { backgroundColor: "#fff" }]}>
+        <LottieView
+          source={loadingAnimation}
+          autoPlay
+          loop={false}
+          style={{ width: 300, height: 300 }} // adjust width/height if needed
+        />
+      </View>
+    );
+  }
+  
+
+  // Main UI for location tracking
   return (
     <SafeAreaView style={styles.container}>
-      {/* Full Screen Modal for Updating Safe Zone Details */}
+      {/* Modal for updating safe zone details */}
       <Modal visible={addSafeZoneModalVisible} animationType="slide">
         <SafeAreaView style={styles.fullScreenModal}>
           <View style={styles.fullScreenHeader}>
@@ -279,7 +307,7 @@ const LocationScreen = () => {
         </SafeAreaView>
       </Modal>
 
-      {/* Add Safe Zone Button */}
+      {/* Button to open safe zone modal */}
       <TouchableOpacity style={styles.addSafeZoneButton} onPress={openAddSafeZonePage}>
         <Ionicons name="add-circle" size={24} color="blue" />
       </TouchableOpacity>
@@ -313,7 +341,7 @@ const LocationScreen = () => {
         <Text style={styles.errorText}>Location not available</Text>
       )}
 
-      {/* Overlay Panel */}
+      {/* Overlay panel with address, buttons, and log */}
       <View style={styles.overlay}>
         <Text style={styles.addressText}>📍 {currentAddress}</Text>
         <View style={styles.buttonsContainer}>
@@ -426,7 +454,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "red",
   },
-  // Full screen modal styles
   fullScreenModal: {
     flex: 1,
     backgroundColor: "#fff",

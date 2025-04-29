@@ -12,48 +12,55 @@ export const ProfileProvider = ({ children }) => {
 
 
   useEffect(() => {
-    let unsubscribeProfile = null;
-    const unsubscribeAuth = firebase.auth().onAuthStateChanged((currentUser) => {
+    const unsubscribe = firebase.auth().onAuthStateChanged(async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
         setIsAuthenticated(true);
-        unsubscribeProfile = fetchUserProfile(currentUser.uid);
+        try {
+          await fetchUserProfile(currentUser.uid);
+        } catch (error) {
+          console.error('Profile fetch error:', error);
+        } finally {
+          setProfileLoading(false); // Turn off the loading regardless of success or error
+        }
       } else {
         setUser(null);
         setIsAuthenticated(false);
         setProfile(null);
-        if (unsubscribeProfile) unsubscribeProfile(); // Clean up profile listener
+        setProfileLoading(false);
       }
     });
-  
-    return () => {
-      unsubscribeAuth();
-      if (unsubscribeProfile) unsubscribeProfile();
-    };
+    return () => unsubscribe();
   }, []);
   
 
 
-const fetchUserProfile = (uid) => {
-  return firebase.firestore().collection('users').doc(uid).onSnapshot((doc) => {
-    if (doc.exists) {
-      setProfile(doc.data());
+  const fetchUserProfile = async (uid) => {
+    try {
+      console.log("Fetching profile for UID:", uid);
+      const userDoc = await firebase.firestore().collection('users').doc(uid).get();
+      if (userDoc.exists) {
+        setProfile(userDoc.data());
+      } else {
+        console.warn('No profile found for uid:', uid);
+        // Option: Create a default profile or navigate to a profile setup screen.
+        const defaultProfile = { name: "", email: "", createdAt: new Date() };
+        await firebase.firestore().collection('users').doc(uid).set(defaultProfile);
+        setProfile(defaultProfile);
+      }
+    } catch (error) {
+      console.error("Error fetching profile:", error);
     }
-  }, (error) => {
-    console.error("Error fetching profile:", error);
-  });
-};
+  };
 
-
-const saveUserProfile = async (uid, profileData) => {
-  try {
-    await firebase.firestore().collection('users').doc(uid).update(profileData);
-    setProfile((prevProfile) => ({ ...prevProfile, ...profileData }));
-  } catch (error) {
-    console.error("Error saving profile:", error);
-  }
-};
-
+  const saveUserProfile = async (uid, profileData) => {
+    try {
+      await firebase.firestore().collection('users').doc(uid).set(profileData);
+      setProfile(profileData);
+    } catch (error) {
+      console.error("Error saving profile:", error);
+    }
+  };
 
   const signOut = async () => {
     try {

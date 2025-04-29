@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -12,18 +12,49 @@ import {
 import DraggableFlatList from 'react-native-draggable-flatlist';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Helper function to generate a unique ID for each image
-const generateUniqueId = () => Date.now().toString() + Math.random().toString(36).substring(2);
+const generateUniqueId = () =>
+  Date.now().toString() + Math.random().toString(36).substring(2);
+
+const STORAGE_KEY = '@images';
 
 const GalleryScreen = () => {
-  // Store images as objects with id and uri
   const [images, setImages] = useState([]); 
   const [selectedImage, setSelectedImage] = useState(null);
 
+  // Load images from local storage on component mount
+  useEffect(() => {
+    const loadImages = async () => {
+      try {
+        const storedImages = await AsyncStorage.getItem(STORAGE_KEY);
+        if (storedImages !== null) {
+          setImages(JSON.parse(storedImages));
+        }
+      } catch (error) {
+        console.error("Error loading images from storage:", error);
+      }
+    };
+    loadImages();
+  }, []);
+
+  // Save images to local storage whenever they change
+  useEffect(() => {
+    const saveImages = async () => {
+      try {
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(images));
+      } catch (error) {
+        console.error("Error saving images to storage:", error);
+      }
+    };
+    saveImages();
+  }, [images]);
+
   const pickImages = async () => {
     // Request permission to access media library
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permissionResult.granted) {
       Alert.alert("Permission Denied", "Media library permission is required!");
       return;
@@ -64,8 +95,17 @@ const GalleryScreen = () => {
     ]);
   };
 
-  // Data is already in the proper format
-  const data = images;
+  const onDragEnd = ({ data }) => {
+    // Update the images state with the new order
+    setImages(data);
+  };
+
+  const deleteAllImages = () => {
+    Alert.alert('Delete All', 'Are you sure you want to delete all photos?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete All', onPress: () => setImages([]) }
+    ]);
+  };
 
   const renderItem = ({ item, drag, isActive }) => (
     <View style={[styles.imageContainer, isActive && styles.activeImageContainer]}>
@@ -84,30 +124,21 @@ const GalleryScreen = () => {
     </View>
   );
 
-  const onDragEnd = ({ data }) => {
-    // Update the images state with the new order (data is already an array of objects)
-    setImages(data);
-  };
-
-  const deleteAllImages = () => {
-    Alert.alert('Delete All', 'Are you sure you want to delete all photos?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete All', onPress: () => setImages([]) }
-    ]);
-  };
-
   return (
     <SafeAreaView style={styles.container}>
       {/* Header Bar */}
       <View style={styles.headerBar}>
         <Text style={styles.pageTitle}>Photo Gallery</Text>
-        <TouchableOpacity style={[styles.floatingButton, styles.deleteAllButton]} onPress={deleteAllImages}>
+        <TouchableOpacity
+          style={[styles.floatingButton, styles.deleteAllButton]}
+          onPress={deleteAllImages}
+        >
           <Ionicons name="trash" size={28} color="white" />
         </TouchableOpacity>
       </View>
       
       <DraggableFlatList
-        data={data}
+        data={images}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         numColumns={2}
@@ -116,7 +147,7 @@ const GalleryScreen = () => {
         containerStyle={styles.gridContainer}
       />
       
-      {/* Floating Add Photos Button at the bottom center */}
+      {/* Floating Add Photos Button */}
       <TouchableOpacity style={styles.bottomButton} onPress={pickImages}>
         <Ionicons name="add-circle" size={40} color="white" />
       </TouchableOpacity>

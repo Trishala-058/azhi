@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import LottieView from 'lottie-react-native';
 
 const DashboardCard = ({ title, iconName, accentColor, onPress }) => {
   return (
@@ -61,6 +62,17 @@ const Dashboard = ({ navigation }) => {
           onPress={() => navigation.navigate('TasksScreen')} 
         />
       </ScrollView>
+
+      {/* Lottie Animation Section */}
+      <View style={styles.lottieContainer}>
+        
+        <LottieView
+          source={require('../../assets/anim/think.json')}
+          autoPlay
+          loop
+          style={styles.lottie}
+        />
+      </View>
     </View>
   );
 };
@@ -112,6 +124,21 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#212121',
     fontWeight: '600',
+  },
+  lottieContainer: {
+    margin: 20,
+    padding: 10,
+    alignItems: 'center',
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  lottie: {
+    width: '150%',
+    height: 350,
   },
 });
 

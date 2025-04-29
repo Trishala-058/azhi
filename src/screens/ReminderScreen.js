@@ -9,13 +9,21 @@ import {
   FlatList,
   Modal,
   TextInput,
-  Switch,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+
+// Configure the notification handler so that notifications are shown even when the app is foregrounded.
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 const STORAGE_KEY = 'reminders';
 
@@ -52,6 +60,14 @@ const ReminderScreen = () => {
   const [showNewReminderTimePicker, setShowNewReminderTimePicker] = useState(false);
   const [selectedReminderId, setSelectedReminderId] = useState(null);
 
+  // Notification listener (to log incoming notifications)
+  useEffect(() => {
+    const subscription = Notifications.addNotificationReceivedListener(notification => {
+      console.log('Notification received:', notification);
+    });
+    return () => subscription.remove();
+  }, []);
+
   // Load reminders from AsyncStorage on mount
   useEffect(() => {
     const loadReminders = async () => {
@@ -83,13 +99,14 @@ const ReminderScreen = () => {
   useEffect(() => {
     (async () => {
       const { status } = await Notifications.requestPermissionsAsync();
+      console.log('Notification permission status:', status);
       if (status !== 'granted') {
         Alert.alert('Permission Denied', 'Please enable notifications for reminders.');
       }
     })();
   }, []);
 
-  // Function to compute the upcoming time (for Tomorrow mode)
+  // Compute the upcoming time for "tomorrow" mode.
   const getUpcomingTime = (selectedDate) => {
     const now = new Date();
     const upcoming = new Date(now);
@@ -100,10 +117,29 @@ const ReminderScreen = () => {
     return upcoming;
   };
 
-  // Schedule a notification for a reminder
-  const scheduleNotification = async (title, description, reminderTime, repeat = false) => {
-    const now = new Date().getTime();
-    const triggerSeconds = Math.max(0, Math.floor((reminderTime.getTime() - now) / 1000));
+  // Schedule a notification for a reminder.
+  // For "tomorrow" mode, schedules a one-time notification.
+  // (The custom mode currently schedules a one-time notification as well—you can extend this logic for repeating notifications.)
+  const scheduleReminderNotifications = async (title, description, reminderTime, mode, days) => {
+    if (!reminderTime) return;
+  
+    // Ensure reminderTime is a Date object
+    let scheduledTime = reminderTime instanceof Date ? reminderTime : new Date(reminderTime);
+    
+    const now = new Date();
+    // Adjust if the scheduled time is not in the future.
+    if (scheduledTime <= now) {
+      scheduledTime = getUpcomingTime(scheduledTime);
+      console.log('Adjusted scheduled time to:', scheduledTime);
+    }
+    
+    // Calculate trigger seconds and enforce a minimum delay of 1 second.
+    const triggerSeconds = Math.max(
+      1,
+      Math.floor((scheduledTime.getTime() - now.getTime()) / 1000)
+    );
+    console.log('Scheduling notification:', { title, scheduledTime, triggerSeconds, mode });
+    
     await Notifications.scheduleNotificationAsync({
       content: {
         title: `${title} Reminder`,
@@ -112,13 +148,13 @@ const ReminderScreen = () => {
           : `It's time for your reminder: ${title}`,
         sound: true,
       },
-      trigger: { seconds: triggerSeconds, repeats: repeat },
+      trigger: { seconds: triggerSeconds, repeats: false },
     });
-    Alert.alert(
-      'Reminder Scheduled',
-      `Reminder for "${title}" is set for ${reminderTime.toLocaleTimeString()}`
-    );
+    
+    Alert.alert('Reminder Scheduled', `Reminder for "${title}" is set for ${scheduledTime.toLocaleTimeString()}`);
   };
+  
+  
 
   // Handler for editing an existing reminder's time
   const onTimeChange = (event, selectedDate) => {
@@ -133,7 +169,7 @@ const ReminderScreen = () => {
         );
         const rem = reminders.find((r) => r.id === selectedReminderId);
         if (rem) {
-          scheduleNotification(rem.title, rem.description, selectedDate);
+          scheduleReminderNotifications(rem.title, rem.description, selectedDate, scheduleMode, newReminderDays);
         }
         setSelectedReminderId(null);
       }
@@ -171,7 +207,8 @@ const ReminderScreen = () => {
     setEditingReminderId(reminder.id);
     setNewReminderTitle(reminder.title);
     setNewReminderDescription(reminder.description);
-    setNewReminderTime(reminder.time);
+    // Convert stored time (which might be a string) back to a Date object
+    setNewReminderTime(reminder.time ? new Date(reminder.time) : null);
     setNewReminderDays(reminder.days || [false, false, false, false, false, false, false]);
     setScheduleMode((reminder.days || []).every((d) => !d) ? 'tomorrow' : 'custom');
   };
@@ -183,7 +220,9 @@ const ReminderScreen = () => {
       return;
     }
     // In Tomorrow mode, override day selection with all false.
-    const days = scheduleMode === 'tomorrow' ? [false, false, false, false, false, false, false] : newReminderDays;
+    const days = scheduleMode === 'tomorrow'
+      ? [false, false, false, false, false, false, false]
+      : newReminderDays;
     if (isEditMode) {
       const updatedReminders = reminders.map((rem) =>
         rem.id === editingReminderId
@@ -192,7 +231,7 @@ const ReminderScreen = () => {
       );
       setReminders(updatedReminders);
       if (newReminderTime) {
-        scheduleNotification(newReminderTitle, newReminderDescription, newReminderTime);
+        scheduleReminderNotifications(newReminderTitle, newReminderDescription, newReminderTime, scheduleMode, days);
       }
     } else {
       const newReminder = {
@@ -204,7 +243,7 @@ const ReminderScreen = () => {
       };
       setReminders((prev) => [...prev, newReminder]);
       if (newReminderTime) {
-        scheduleNotification(newReminderTitle, newReminderDescription, newReminderTime);
+        scheduleReminderNotifications(newReminderTitle, newReminderDescription, newReminderTime, scheduleMode, days);
       }
     }
     // Reset modal fields and exit edit mode
@@ -262,7 +301,7 @@ const ReminderScreen = () => {
     );
   };
 
-  // Render each reminder card (time, then title, then description)
+  // Render each reminder card (time, title, description)
   const renderReminder = ({ item }) => (
     <View style={styles.reminderCard}>
       {item.time ? (
@@ -270,7 +309,6 @@ const ReminderScreen = () => {
           Reminder at: {new Date(item.time).toLocaleTimeString()}
         </Text>
       ) : (
-        // If no time, display upcoming time computed from current time
         <Text style={styles.reminderTime}>
           Reminder at: {getUpcomingTime(new Date()).toLocaleTimeString()}
         </Text>
@@ -304,23 +342,7 @@ const ReminderScreen = () => {
           ))}
         </View>
       )}
-      <View style={styles.cardButtonRow}>
-        <TouchableOpacity
-          style={styles.cardButton}
-          onPress={() => {
-            setSelectedReminderId(item.id);
-            setShowTimePicker(true);
-          }}
-        >
-          <LinearGradient
-            colors={['#6a11cb', '#2575fc']}
-            style={styles.cardButtonGradient}
-          >
-            <Ionicons name="alarm-outline" size={20} color="#fff" style={styles.buttonIcon} />
-            <Text style={styles.cardButtonText}>Set Time</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
+      {/* "Set Time" button removed */}
     </View>
   );
 
@@ -368,7 +390,6 @@ const ReminderScreen = () => {
           onChange={onNewReminderTimeChange}
         />
       )}
-
       {/* Modal for Adding / Editing Reminder */}
       <Modal visible={isAddModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
@@ -516,7 +537,6 @@ const styles = StyleSheet.create({
   addButton: { marginTop: 20 },
   addButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: 12 },
   addButtonText: { fontSize: 18, color: '#fff', fontWeight: '600' },
-  // Modal Styles with Blue Theme & Custom Day Picker
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center' },
   modalContainer: { width: '90%', maxWidth: 500, backgroundColor: '#fff', borderRadius: 30, overflow: 'hidden' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#2F80ED', paddingVertical: 20, paddingHorizontal: 25 },
@@ -537,8 +557,8 @@ const styles = StyleSheet.create({
   modeButtonTextSelected: { color: '#fff' },
   timeButton: { 
     width: '100%', 
-    paddingVertical: 25,  // Increased vertical padding
-    paddingHorizontal: 20, // Increased horizontal padding
+    paddingVertical: 25,  
+    paddingHorizontal: 20, 
     backgroundColor: '#f0f0f0', 
     borderRadius: 15, 
     alignItems: 'center', 
@@ -547,11 +567,10 @@ const styles = StyleSheet.create({
     borderColor: '#ccc',
   },
   timeButtonText: { 
-    fontSize: 20, // Increased font size
+    fontSize: 20, 
     color: '#333', 
     fontWeight: '600' 
   },
-  
   modalFooter: { flexDirection: 'row', justifyContent: 'space-around', backgroundColor: '#f9f9f9', paddingVertical: 20 },
   modalButton: { backgroundColor: '#2F80ED', paddingVertical: 14, paddingHorizontal: 30, borderRadius: 15, flex: 1, marginHorizontal: 10 },
   modalButtonText: { fontSize: 18, color: '#fff', textAlign: 'center', fontWeight: '600' },
